@@ -1,0 +1,46 @@
+#! /usr/bin/python
+'''
+ *  $Id: JobOpt_DmpCalBgoDac, 2014-10-11 DAMPE $
+ *  Author(s):USTC
+
+      DAC  Calibration:
+      Append: RdcAlg,
+              CalAlgBgoDac;
+              
+'''
+
+#-------------------------------------------------------------------
+import DMPSW                    # Load DAMPE software
+import libDmpHex2Root as Hex2Root
+import libDmpAlgBgoDac as DmpBgoDac
+
+#-------------------------------------------------------------------
+# Global setting
+#DMPSW.Core.Set("EventNumber","8000")     # If NOT set, will use 1234567890
+#DMPSW.Core.Set("StartTime","20130101-0000")     # if NOT set, start from launch time
+#DMPSW.Core.Set("StopTime","20160101-0000")      # if NOT set, end at 2113.01.01
+#DMPSW.Core.Set("LogLevel","Warning")      # Value = {Error | Warning | Info | Debug}. If NOT set, will use Info.
+
+#-------------------------------------------------------------------
+# RootIOSvc options
+DMPSW.RootIOSvc.Set("Input/Path","./binary/DAC/")
+filename="Raw";
+DMPSW.RootIOSvc.Set("Input/FileName",filename+".frd")
+DMPSW.RootIOSvc.Set("Output/Path","./DAC/")
+DMPSW.RootIOSvc.Set("Output/FileName",filename+"_BgoDac.root")        # must set it, if NOT set, will not save anything
+DMPSW.RootIOSvc.Set("Output/WriteList","Calibration/Bgo")  # split by ;
+
+#-------------------------------------------------------------------
+rdcAlgBT = Hex2Root.DmpAlgHex2Root()
+rdcAlgBT.Set("Connector/Bgo","Bgo/EQM")
+DMPSW.AlgMgr.Append(rdcAlgBT)
+
+calBgoDac = DmpBgoDac.DmpAlgBgoDac()
+DMPSW.AlgMgr.Append(calBgoDac)
+
+#-------------------------------------------------------------------
+# Run job
+DMPSW.Core.Initialize()
+DMPSW.Core.Run()
+DMPSW.Core.Finalize()
+

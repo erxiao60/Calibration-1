@@ -1,0 +1,79 @@
+#! /usr/bin/python
+'''
+ *  $Id: JobOpt_DmpHex2Root, 2014-09-18 21:13:09 DAMPE $
+ *  Author(s):
+ *    Chi WANG (chiwang@mail.ustc.edu.cn) 11/03/2014
+ *-----------------------------------------------------
+ *      Example of how to run Rdc of DAMPE. EQM
+ *-----------------------------------------------------
+'''
+
+#-------------------------------------------------------------------
+import os
+import sys
+import DMPSW                    # Load DAMPE software
+import libDmpHex2Root as Hex2Root
+
+
+
+#print 'you entered', len(sys.argv), 'arguments...'
+#print 'they are: ', str(sys.argv)
+
+#input file name
+seg=len(sys.argv[1])
+if seg == 0:
+  print 'Usage: ./job inputpath/inputfile'
+
+suffix = 0
+
+for i in range(0,len(sys.argv[1]),1):
+	if sys.argv[1][i]=='/':
+	   seg=i
+	if sys.argv[1][i]=='.':
+	   suffix=i
+	   
+inputpath=sys.argv[1][0:seg]
+inputfilename=sys.argv[1][(seg+1):]
+inputstem=sys.argv[1][(seg+1):suffix]
+#print inputstem
+#-------------------------------------------------------------------
+# Global setting
+#DMPSW.Core.Set("EventNumber","4130")     # If NOT set, will use 1234567890
+#DMPSW.Core.Set("StartTime","20130101-0000")     # if NOT set, start from launch time
+#DMPSW.Core.Set("StopTime","20160101-0000")      # if NOT set, end at 2113.01.01
+#DMPSW.Core.Set("LogLevel","Error")      # Value = {Error | Warning | Info | Debug}. If NOT set, will use Info.
+#DMPSW.Core.Set("LogHeader","On")
+
+#-------------------------------------------------------------------
+# RootIOSvc Service
+
+DMPSW.RootIOSvc.Set("Input/Path",inputpath)
+DMPSW.RootIOSvc.Set("Input/FileName",inputfilename)
+DMPSW.RootIOSvc.Set("Output/Path","./RawROOT/")
+DMPSW.RootIOSvc.Set("Output/FileName",inputstem+".root")
+DMPSW.RootIOSvc.Set("Output/WriteList","Event/Rdc")  # split by ;
+
+#-------------------------------------------------------------------
+# Creat user's service or algorithm
+rdcAlgBT = Hex2Root.DmpAlgHex2Root()
+#rdcAlgBT.Set("Connector/Psd","Psd/EQM")
+#rdcAlgBT.Set("Connector/Stk",Stk/EQM")
+rdcAlgBT.Set("Connector/Bgo","Bgo/EQM")
+#rdcAlgBT.Set("Connector/Nud","Nud/EQM")
+#rdcAlgBT.Set("BinaryFile","A2_20140910_123726.frd")
+#rdcAlgBT.Set("BinaryFile","A2_20140912_092040.frd")
+#rdcAlgBT.Set("BinaryFile","A2_20140910_124351.frd")
+#rdcAlgBT.Set("BinaryFile","A2_20140909_183743.frd")
+#rdcAlgBT.Set("BinaryFile","test_A2Data00_20140513_191731.frd")
+
+#-------------------------------------------------------------------
+# Append user's service or algorithm into Kernel
+DMPSW.AlgMgr.Append(rdcAlgBT)
+
+#-------------------------------------------------------------------
+# Run job
+DMPSW.Core.Initialize()
+DMPSW.Core.Run()
+DMPSW.Core.Finalize()
+
+
