@@ -73,7 +73,7 @@ bool DmpAlgBgoHits::GetMipsPar(){
     l=DmpBgoBase::GetLayerID(gid);
     b=DmpBgoBase::GetBarID(gid);
     s=fBgoMips->BgoSide[i];//s=0,1,2
-    MipsPar[l][b][s][0]=fBgoMips->MPV[i]+0.222783*fBgoMips->Lwidth[i];//corrected MPV
+    MipsPar[l][b][s][0]=fBgoMips->MPV[i];//using the maximum
     MipsPar[l][b][s][1]=fBgoMips->Gsigma[i];
     MipsPar[l][b][s][2]=fBgoMips->Lwidth[i];
   }
@@ -172,12 +172,12 @@ bool DmpAlgBgoHits::ProcessThisEvent(){
       HitsBuffer[l][b][s]=adc/MipsPar[l][b][s][0];
       tag[l][b][s]=d;
     }  
-    else if(d==5&&adc>200&&adc<8000&&tag[l][b][s]!=8){
+    else if(d==5&&adc>150&&adc<10000&&tag[l][b][s]!=8){
       double adc_8=adc*DyCoePar_58[l][b][s][0]+DyCoePar_58[l][b][s][1];
       HitsBuffer[l][b][s]=adc_8/MipsPar[l][b][s][0];
       tag[l][b][s]=d;
     }
-    else if(d==2&&adc>200&&tag[l][b][s]!=5&&tag[l][b][s]!=8){
+    else if(d==2&&adc>150&&tag[l][b ][s]!=5&&tag[l][b][s]!=8){
       double adc_5=adc*DyCoePar_25[l][b][s][0]+DyCoePar_25[l][b][s][1];
       double adc_8=adc_5*DyCoePar_58[l][b][s][0]+DyCoePar_58[l][b][s][1];
       HitsBuffer[l][b][s]=adc_8/MipsPar[l][b][s][0];
@@ -185,37 +185,44 @@ bool DmpAlgBgoHits::ProcessThisEvent(){
     }
   }
   //fill Hits event class
-  for(short il=0;il<14;++il){
-    for(short ib=0;ib<22;++ib){
+  for(short il=0;il<14;++il){ 
+    for(short ib=0;ib<22;++ib) {
       //s0*s1 !=0;
       if(HitsBuffer[il][ib][0]!=0&&HitsBuffer[il][ib][1]!=0){
       short gid_bar=DmpBgoBase::ConstructGlobalBarID(il,ib);
       fBgoHits->fGlobalBarID.push_back(gid_bar);
       fBgoHits->fES0.push_back(HitsBuffer[il][ib][0]*22.5);
       fBgoHits->fES1.push_back(HitsBuffer[il][ib][1]*22.5);
-        if(TMath::Abs(HitsBuffer[il][ib][0]/HitsBuffer[il][ib][1]-1)<0.4){//1-exp(-600/lambda)=0.36; (lambda=1350mm)
+      //  if(TMath::Abs(Hi tsBuffer[il][ib][0]/HitsBuffer[il][ib][1]-1)<0.4){//1-exp(-600/lambda)=0.36; (lambda=1350mm)
           if(HitsBuffer[il][ib][0]*HitsBuffer[il][ib][1]*MipsPar[il][ib][0][0]*MipsPar[il][ib][1][0]<0){
 	DmpLogError<<"Hits0= "<<HitsBuffer[il][ib][0]<<" Hits1= "<<HitsBuffer[il][ib][1]<<" Mip_MPV[0]="<<MipsPar[il][ib][0][0]<<" Mip_MPV[1]"<<MipsPar[il][ib][1][0]<<DmpLogEndl;
 	  }
           double combinedhits=TMath::Sqrt(HitsBuffer[il][ib][0]*HitsBuffer[il][ib][1]*MipsPar[il][ib][0][0]*MipsPar[il][ib][1][0])/MipsPar[il][ib][2][0]; 
-          DmpLogWarning<<"Layer="<<il<<" Bar="<<ib<<" Event="<<gCore->GetCurrentEventID()<<" combinedhits:"<<combinedhits<<" ADC"<<" MipsPar:"<<MipsPar[il][ib][2][0]<<DmpLogEndl;
+        //DmpLogWarning<<"Layer="<<il<<" Bar="<<ib<<" Event="<<gCore->GetCurrentEventID()<<" combinedhits:"<<combinedhits<<" ADC"<<" MipsPar:"<<MipsPar[il][ib][2][0]<<DmpLogEndl;
           fBgoHits->fEnergy.push_back(combinedhits*22.5);
-	  double pos=(TMath::Log(HitsBuffer[il][ib][0]/HitsBuffer[il][ib][1])-AttPar[il][ib][1])/AttPar[il][ib][0];
-	  if(il%2==0){
+	  double pos=(TMath::Log(HitsBuffer[il][ib][0]/HitsBuffer[il][ib][1])-AttPar[il][ib][1])/AttPar[il][ib][0]*10-300;
+	  if(il%2==0){ 
             Position.SetX(pos);
+	    double yy=DmpBgoBase::Parameter()->BarCenter(gid_bar).y();
+              Position.SetY(yy);
 	  } 
-	  else{
+	  else{ 
 	    Position.SetY(pos);
+	    double xx=DmpBgoBase::Parameter()->BarCenter(gid_bar).x();
+              Position.SetX(xx);
 	  }
-          fBgoHits->fPosition.push_back(Position);//along the BGO bar (mm)
-        }
-        else  {
-          DmpLogWarning<<"Layer="<<il<<" Bar="<<ib<<" Event="<<gCore->GetCurrentEventID()<<" Energies from two BGO sides UNmatch!"<<DmpLogEndl;
+	  double zz=DmpBgoBase::Parameter()->LayerCenter(gid_bar).z();
+          Position.SetZ(zz);
+           
+	   fBgoHits->fPosition.push_back(Position);//along the BGO bar (mm)
+      //  }
+       // else  {
+        //  DmpLogWarning<<"Layer="<<il<<" Bar="<<ib<<" Event="<<gCore->GetCurrentEventID()<<" Energies from two BGO sides UNmatch!"<<DmpLogEndl;
         //std::cout<<"Side 0:"<<HitsBuffer[il][ib][0]*22.5<<" MeV;\n"<<"Side 1:"<<HitsBuffer[il][ib][1]*22.5<<" MeV"<<std::endl;          
-          fBgoHits->fEnergy.push_back(HitsBuffer[il][ib][0]*22.5);
-          fBgoHits->fPosition.push_back(Position);//along the BGO bar (mm)
-        }
-      }
+        //  fBgoHits->fEnergy.push_back(HitsBuffer[il][ib][0]*22.5);
+        //  fBgoHits->fPosition.push_back(Position);//along the BGO bar (mm)
+      //  }
+      } 
       //s0!=0 or s1 !=0;
   //    else if(HitsBuffer[il][ib][0]!=0||HitsBuffer[il][ib][1]!=0){
     //    if((HitsBuffer[il][ib][0]+HitsBuffer[il][ib][1])<0.5){//set noise threshold: 0.5MIPs

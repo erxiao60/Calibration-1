@@ -10,10 +10,29 @@
 '''
 
 #-------------------------------------------------------------------
+import sys
 import DMPSW                    # Load DAMPE software
 import libDmpHex2Root as Hex2Root
 import libDmpAlgBgoDac as DmpBgoDac
 
+#-------------------------------------------------------------------
+#input file name
+seg=len(sys.argv[1])
+if seg == 0:
+  print 'Usage: ./job inputpath/inputfile'
+
+suffix = 0
+
+for i in range(0,len(sys.argv[1]),1):
+	if sys.argv[1][i]=='/':
+	   seg=i
+	if sys.argv[1][i]=='.':
+	   suffix=i
+	   
+inputpath=sys.argv[1][0:seg]
+inputfilename=sys.argv[1][(seg+1):]
+inputstem=sys.argv[1][(seg+1):suffix]
+#print inputstem
 #-------------------------------------------------------------------
 # Global setting
 #DMPSW.Core.Set("EventNumber","8000")     # If NOT set, will use 1234567890
@@ -23,11 +42,10 @@ import libDmpAlgBgoDac as DmpBgoDac
 
 #-------------------------------------------------------------------
 # RootIOSvc options
-DMPSW.RootIOSvc.Set("Input/Path","./binary/DAC/")
-filename="Raw";
-DMPSW.RootIOSvc.Set("Input/FileName",filename+".frd")
+DMPSW.RootIOSvc.Set("Input/Path",inputpath)
+DMPSW.RootIOSvc.Set("Input/FileName",inputfilename)
 DMPSW.RootIOSvc.Set("Output/Path","./DAC/")
-DMPSW.RootIOSvc.Set("Output/FileName",filename+"_BgoDac.root")        # must set it, if NOT set, will not save anything
+DMPSW.RootIOSvc.Set("Output/FileName",inputstem+"_BgoDac.root")
 DMPSW.RootIOSvc.Set("Output/WriteList","Calibration/Bgo")  # split by ;
 
 #-------------------------------------------------------------------

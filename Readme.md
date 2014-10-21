@@ -1,15 +1,13 @@
 Bgo ECal Calibration of DMPSW:    DmpBgoCal_v1.0.0
 >--------------------------------------------------
 
->--------------------------------------------------
 Packages:                                   Authors:
 RacEQM3Det(Rdc), CalBgoPed;                 Chi Wang
 CalBgoDac, CorBgoDacor, CalBgoHits;         Zhiyong Zhang  Yifeng Wei
 CorBgoCutped, CalBgoMips;                   Zhiyong Zhang, Chi Wang
 CalBgoDyCoe, CalBgoAttLen(under testing);   Jianing Dong
 JobOpt                                      Chi Wang Zhiyong Zhang
-
-
+Trackers                                    Liu Dong (/JobOpt/Hits) 21/10/2014
 
 Usages:
       ./xxx_job inputpath/inputfilename;

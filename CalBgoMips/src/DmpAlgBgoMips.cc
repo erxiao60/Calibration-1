@@ -148,9 +148,10 @@ bool DmpAlgBgoMips::RawTrack(){
 //  Lmax=(Int_t*)malloc(20);
   double AdcBuffer[14][22][2];
   short gid=0,l=0,b=0,s=0,d=0;
+  short nHits=0;
   double adc =0.;
   short nSignal = fBgoRaw->fGlobalDynodeID.size();
-  std::cout<<"nSignal:"<<nSignal<<std::endl;
+//  std::cout<<"nSignal:"<<nSignal<<std::endl;
   for(short i=0; i<nSignal;i++){
     gid=fBgoRaw->fGlobalDynodeID[i];
     adc=fBgoRaw->fADC[i]; 
@@ -160,6 +161,7 @@ bool DmpAlgBgoMips::RawTrack(){
     d=DmpBgoBase::GetDynodeID(gid);
     if(b>=22){continue;}//spare channels
      if(s==0&&d==8){//only check side 0;
+	nHits++;
         if(adc>MaxAdc[l][0]){
 	MaxAdc[l][0]=adc;
 	MaxBar[l]=b;//0--21
@@ -170,10 +172,17 @@ bool DmpAlgBgoMips::RawTrack(){
    for(short j=0;j<14;j++){
   MaxAdc[j][1]=AdcBuffer[j][MaxBar[j]][1];
   MaxAdc[j][2]=TMath::Sqrt(MaxAdc[j][0]*MaxAdc[j][1]);
-  } 
+  }
+  //MIPs Tracker check
+  if(nHits<10||nHits>45){
+  return false;
+  }
   if((MaxAdc[0][0]<100&&MaxAdc[1][0]<100)||(MaxAdc[12][0]<100&&MaxAdc[13][0]<100)) {
   return false;
-  } 
+  }
+  for(int i=0;i<14;i++){
+  if(MaxAdc[i][0]>14000){return false;}
+  }
   return true;
 }   
 
@@ -211,8 +220,14 @@ bool DmpAlgBgoMips::RawTrack(){
       //fill MIPs event class
       fBgoMips->GlobalBarID.push_back(aHist->first);
       fBgoMips->BgoSide.push_back(aSide->first);
-     
+    //using maximum instead of MPV 
       myMIPs->GetParameters(par);
+      double peak=myMIPs->GetMaximumX(0.8*par[1],1.5*par[1]);
+      par[1]=peak;
+      myMIPs->SetParameters(par);
+      myMIPs->SetRange(par[1]*0.5,par[1]*3);
+      
+
       par_error=myMIPs->GetParErrors();
       chis=myMIPs->GetChisquare();
       fBgoMips->MPV.push_back(par[1]);
