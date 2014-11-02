@@ -104,7 +104,7 @@ bool DmpAlgBgoMips::Initialize(){
 //  std::cout<<"0000000000000000000000000"<<std::endl;
   gRootIOSvc->PrepareEvent(0);
 //  std::cout<<"0000000000000000000000000"<<std::endl;
-  fBgoMips->StartTime = fEvtHeader->fSecond;
+  fBgoMips->StartTime = fEvtHeader->GetSecond();
 //  std::cout<<"0000000000000000000000000"<<std::endl;
   // create Hist map
   short layerNo = DmpParameterBgo::kPlaneNo*2;
@@ -127,6 +127,9 @@ bool DmpAlgBgoMips::Initialize(){
 
 //-------------------------------------------------------------------
 bool DmpAlgBgoMips::ProcessThisEvent(){
+    //check run mode
+  if(fBgoRaw->GetRunMode()==2)
+    return false;
   //find a raw track
   bool goodtrack=RawTrack();
   //fll
@@ -147,6 +150,7 @@ bool DmpAlgBgoMips::ProcessThisEvent(){
 bool DmpAlgBgoMips::RawTrack(){
 //  Lmax=(Int_t*)malloc(20);
   double AdcBuffer[14][22][2];
+  memset(AdcBuffer,0,sizeof(AdcBuffer));
   short gid=0,l=0,b=0,s=0,d=0;
   short nHits=0;
   double adc =0.;
@@ -174,14 +178,14 @@ bool DmpAlgBgoMips::RawTrack(){
   MaxAdc[j][2]=TMath::Sqrt(MaxAdc[j][0]*MaxAdc[j][1]);
   }
   //MIPs Tracker check
-  if(nHits<10||nHits>45){
+  if(nHits<10||nHits>40){
   return false;
   }
   if((MaxAdc[0][0]<100&&MaxAdc[1][0]<100)||(MaxAdc[12][0]<100&&MaxAdc[13][0]<100)) {
   return false;
   }
   for(int i=0;i<14;i++){
-  if(MaxAdc[i][0]>14000){return false;}
+  if(MaxAdc[i][0]>8000){return false;}
   }
   return true;
 }   
@@ -190,7 +194,7 @@ bool DmpAlgBgoMips::RawTrack(){
  bool  DmpAlgBgoMips::Finalize(){
  // TF1 *gausFit = new TF1("GausFit","gaus",-500,500);
   std::string histFileName ="./MIPs/Histograms/"+gRootIOSvc->GetInputStem()+"_mip_Hist.root";
-  fBgoMips->StopTime = fEvtHeader->fSecond;
+  fBgoMips->StopTime = fEvtHeader->GetSecond();
   Double_t mean=0.,par[4]={0,0,0,0},chis=0;
   Long64_t nentries;
   Double_t *par_error;

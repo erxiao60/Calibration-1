@@ -17,6 +17,7 @@
 #include "DmpDataBuffer.h"
 #include "DmpParameterBgo.h"
 #include "DmpBgoBase.h"
+#include "DmpTimeConvertor.h"
 #include "DmpCore.h"
 //-------------------------------------------------------------------
 DmpAlgBgoPed::DmpAlgBgoPed()
@@ -25,8 +26,6 @@ DmpAlgBgoPed::DmpAlgBgoPed()
   fBgoRaw(0),
   fBgoPed(0)
 {
-	fTgap=0;
-	fTlast=0;
 }
 
 //-------------------------------------------------------------------
@@ -53,8 +52,8 @@ bool DmpAlgBgoPed::Initialize(){
 
   fBgoPed->UsedFileName = gRootIOSvc->GetInputFileName();
   gRootIOSvc->PrepareEvent(0);
-  fBgoPed->StartTime = fEvtHeader->fSecond;
-  fTlast=fEvtHeader->fSecond;
+  fBgoPed->StartTime = fEvtHeader->GetSecond();
+ // fTlast=fEvtHeader->GetSecond();
   // create Hist map
   short layerNo = DmpParameterBgo::kPlaneNo*2;
   short barNo = DmpParameterBgo::kBarNo+DmpParameterBgo::kRefBarNo;
@@ -65,39 +64,61 @@ bool DmpAlgBgoPed::Initialize(){
           char name[50];
           short gid_dy = DmpBgoBase::ConstructGlobalDynodeID(l,b,s,d*3+2);
           snprintf(name,50,"BgoPed_%05d-L%02d_B%02d_Dy%02d",gid_dy,l,b,s*10+d*3+2);
+
           fPedHist.insert(std::make_pair(gid_dy,new TH1F(name,name,1000,-500,500)));
+
         }
       }
     }
   }
+  //Cut Last Package
+  int Tstarttime=fEvtHeader->GetSecond();
+  int Tlasttime=Tstarttime;
+  int Tnowtime=0;
+  int Ttimegap=0;
+  timecut=Tstarttime;
+  int nEvents=gCore->GetMaxEventNumber();
+  for(int ievent=0;ievent<800;ievent++){
+    gRootIOSvc->PrepareEvent(ievent);
+    Tnowtime=fEvtHeader->GetSecond();
+    Ttimegap=Tnowtime -Tlasttime;
+    if(Ttimegap>80){
+      timecut=Tnowtime;
+      std::cout<<"Cut last package event!(Nevent:"<<ievent<<")"<<std::endl;
+      break;
+      }
+      Tlasttime=Tnowtime;
+    }
+//  std::string t = DmpTimeConvertor::Second2Date(timecut);
+//  gCore->Set("StartTime",t);
+  fBgoPed->StartTime = timecut;
   return true;
 }
 
 //-------------------------------------------------------------------
 bool DmpAlgBgoPed::ProcessThisEvent(){
+    //check run mode
+  if(fBgoRaw->GetRunMode()!=0){
+    std::cout<<"Wrong Run Mode!"<<fBgoRaw->GetRunMode()<<std::endl;
+    return false;
+   }
+   //Cutlast package
+   int timenow= fEvtHeader->GetSecond();
+   if(timenow<timecut){return false;}
+
+    long thisevent= gCore->GetCurrentEventID();
+    std::cout<<"This event:"<<thisevent<<std::endl;
+
+
   short nSignal = fBgoRaw->fGlobalDynodeID.size();
   short gid = 0;
   double adc = 0.;
   for(short i=0;i<nSignal;++i){
     gid=fBgoRaw->fGlobalDynodeID[i];
     adc=fBgoRaw->fADC[i]; 
-      fPedHist[gid]->Fill(adc);
+    fPedHist[gid]->Fill(adc);
    }
-  //check time gap to cut last package
-  fTgap =fEvtHeader->fSecond-fTlast;
-  fTlast=fEvtHeader->fSecond;
-  if(fTgap>60){
-    // long entries=fEvtHeader 
-    long entries= gCore->GetCurrentEventID();
-    if(entries<500){
-      std::cout<<"Cut last package & Reset histograms!";
-      for(std::map<short,TH1F*>::iterator aHist=fPedHist.begin();aHist!=fPedHist.end();++aHist){
-        aHist->second->Reset();
-      }
-      fBgoPed->StartTime = fEvtHeader->fSecond;
-    }
-  } 
-
+//  std::cout<<"!!!!!!!!!!!!!!!!!!!!!!!!!!"<<std::endl;
   return true;
 } 
 
@@ -106,7 +127,7 @@ bool DmpAlgBgoPed::Finalize(){
   TF1 *gausFit = new TF1("GausFit","gaus",-500,500);
   std::string histFileName = "./Pedestal/Histograms/"+gRootIOSvc->GetInputStem()+"_ped_Hist.root";
   TFile *histFile = new TFile(histFileName.c_str(),"RECREATE");
-  fBgoPed->StopTime = fEvtHeader->fSecond;
+  fBgoPed->StopTime = fEvtHeader->GetSecond();
   for(std::map<short,TH1F*>::iterator aHist=fPedHist.begin();aHist!=fPedHist.end();++aHist){
       fBgoPed->GlobalDynodeID.push_back(aHist->first);
 // *

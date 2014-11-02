@@ -69,11 +69,16 @@ bool DmpAlgBgoDacor ::Initialize(){
 
 //-------------------------------------------------------------------
 bool  DmpAlgBgoDacor::ProcessThisEvent(){
+  if(fEvtHeader->EnabledPeriodTrigger()&&fEvtHeader->GeneratedPeriodTrigger()){
+  return false;
+  }
   short nSignal = fBgoRaw->fGlobalDynodeID.size();
+//std::cout<<"XXXXXXXXXXXXXXXX"<<nSignal<<std::endl;
   short gid = 0;
   double adc =0.;
   for (short i=0;i<nSignal;++i){
     gid=fBgoRaw->fGlobalDynodeID[i];
+//std::cout<<i<<"  !!!!!!!!!!!!!!!!!!!!!!!!!!"<<DmpBgoBase::GetLayerID(gid)<<" "<<DmpBgoBase::GetBarID(gid)<<" "<<DmpBgoBase::GetSideID(gid)<<" "<<DmpBgoBase::GetDynodeID(gid)<<std::endl;
     adc=fBgoRaw->fADC[i]; 
     double cor=DACcorrected(gid,adc);
     fBgoRaw->fADC[i]=cor;   

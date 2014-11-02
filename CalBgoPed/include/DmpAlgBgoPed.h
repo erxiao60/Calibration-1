@@ -35,11 +35,9 @@ private:
   DmpEvtBgoPed          *fBgoPed;
   std::map<short,TH1F*>  fPedHist;          // key is global dynode ID
 
-//cut last package 
-//timegap>60s && event<600
-private:
-  int fTgap;
-  int fTlast;
+//time cut
+int timecut;
+
 };
 
 #endif

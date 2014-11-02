@@ -34,6 +34,10 @@ DmpAlgBgoDac::~DmpAlgBgoDac(){
 bool DmpAlgBgoDac::Initialize(){
 //  gRootIOSvc->Set("Output/FileName","./"+gRootIOSvc->GetInputFileName()+"_Dac.root");
   // read input data
+  fEvtHeader= new DmpEvtHeader();
+  fBgoRaw=new DmpEvtBgoRaw();
+  gDataBuffer->LinkRootFile("Event/Rdc/EventHeader",fEvtHeader);
+  gDataBuffer->LinkRootFile("Event/Rdc/Bgo",fBgoRaw);
   fEvtHeader = dynamic_cast<DmpEvtHeader*>(gDataBuffer->ReadObject("Event/Rdc/EventHeader"));
   fBgoRaw = dynamic_cast<DmpEvtBgoRaw*>(gDataBuffer->ReadObject("Event/Rdc/Bgo"));
   // create output data holder
@@ -41,7 +45,7 @@ bool DmpAlgBgoDac::Initialize(){
   gDataBuffer->RegisterObject("Calibration/Bgo/Dac",fBgoDac,"DmpEvtBgoDac"); 
   fBgoDac->UsedFileName = gRootIOSvc->GetInputFileName();
   gRootIOSvc->PrepareEvent(0);
-  fBgoDac->StartTime = fEvtHeader->fSecond;
+  fBgoDac->StartTime = fEvtHeader->GetSecond();
   //fTlast=fEvtHeader->GetSecond();
   // create Hist map
   short layerNo = DmpParameterBgo::kPlaneNo*2;
@@ -72,7 +76,8 @@ bool DmpAlgBgoDac::Initialize(){
 
 //-------------------------------------------------------------------
 bool DmpAlgBgoDac::PrepareCalVol(){
-  Float_t Cal_DACcode[15]={160,320,480,640,800,960,1120,1280,1440,1600,1760,1920,2080,2240,2400};
+ // Float_t Cal_DACcode[15]={160,320,480,640,800,960,1120,1280,1440,1600,1760,1920,2080,2240,2400};
+  Float_t Cal_DACcode[15]={160,320,640,800,1120,1280,1600,1760,2080,2240,2400};
   //Float_t Cal_Vol[16][15];
   for(int i=0;i<15;i++){
     Cal_Vol[0][i]=0.76575*Cal_DACcode[i]+5.7013;
@@ -97,7 +102,7 @@ bool DmpAlgBgoDac::PrepareCalVol(){
 //-------------------------------------------------------------------
 bool DmpAlgBgoDac::ProcessThisEvent(){
     //check run mode
-  if(fBgoRaw->fRunMode!=2)
+  if(fBgoRaw->GetRunMode()!=2)
     return true;
      //Fill
   short nSignal = fBgoRaw->fGlobalDynodeID.size();
@@ -116,6 +121,7 @@ bool DmpAlgBgoDac::ProcessThisEvent(){
     TriggerNub=0;
     DacCalPot++;
    }
+   return true;
 } 
 
 //-------------------------------------------------------------------
@@ -181,10 +187,10 @@ else if((ilayer==11||ilayer==13)&&iside==1)
 }
 //-------------------------------------------------------------------
 bool DmpAlgBgoDac::Finalize(){
-  TF1 *Dacfit=new TF1("DacFit","[0]*x*x+[1]*x+[2]",50,1300);
+  TF1 *Dacfit=new TF1("DacFit","[0]*x*x+[1]*x+[2]",80,1400);
   std::string histFileName = "./DAC/Histograms/"+gRootIOSvc->GetInputStem()+"_dac_Hist.root";
   TFile *histFile = new TFile(histFileName.c_str(),"RECREATE");
-  fBgoDac->StopTime = fEvtHeader->fSecond;
+  fBgoDac->StopTime = fEvtHeader->GetSecond();
   Double_t DacPar[3];
   for(std::map<short,TH2F*>::iterator aHist=fDacHist2F.begin();aHist!=fDacHist2F.end();++aHist){
       fBgoDac->GlobalDynodeID.push_back(aHist->first);

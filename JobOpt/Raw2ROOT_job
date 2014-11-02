@@ -56,9 +56,10 @@ DMPSW.RootIOSvc.Set("Output/WriteList","Event/Rdc")  # split by ;
 #-------------------------------------------------------------------
 # Creat user's service or algorithm
 rdcAlgBT = Hex2Root.DmpAlgHex2Root()
+rdcAlgBT.Set("Psd/Connector",DMPSW.WorkPath+"/share/Connector/Psd/EQM")
+rdcAlgBT.Set("Bgo/Connector",DMPSW.WorkPath+"/share/Connector/Bgo/EQM")
 #rdcAlgBT.Set("Connector/Psd","Psd/EQM")
 #rdcAlgBT.Set("Connector/Stk",Stk/EQM")
-rdcAlgBT.Set("Connector/Bgo","Bgo/EQM")
 #rdcAlgBT.Set("Connector/Nud","Nud/EQM")
 #rdcAlgBT.Set("BinaryFile","A2_20140910_123726.frd")
 #rdcAlgBT.Set("BinaryFile","A2_20140912_092040.frd")

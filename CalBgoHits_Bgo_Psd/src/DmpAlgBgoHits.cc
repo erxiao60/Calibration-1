@@ -8,6 +8,8 @@
 #include "TTree.h"
 #include "TBranch.h"
 #include "DmpBgoBase.h"
+#include "DmpTimeConvertor.h"
+#include "DmpPsdBase.h"
 #include "DmpCore.h"
 #include <iostream>
 #include <fstream>
@@ -19,10 +21,11 @@ DmpAlgBgoHits::DmpAlgBgoHits()
 	fBgoDyCoe(0),
 	fBgoMips(0),
   //      fBgoAtt(0),
-	fBgoHits(0)
+	fBgoHits(0),
+        fPsdRaw(0)
 {
         
- }
+}
 
 //-------------------------------------------------------------------
 bool DmpAlgBgoHits::GetDyCoePar(){
@@ -103,11 +106,53 @@ bool DmpAlgBgoHits::GetAttPar(){
       AttPar[l][b][j]=attpar;
 //      std::cout<<AttPar[i][j]<<"\t";
     }
-//    std::cout<<std::endl;
+  //  std::cout<<std::endl;
   }
   Apar.close();
   return true;
 }   
+//-------------------------------------------------------------------
+bool DmpAlgBgoHits::GetPsdPed(){
+  ifstream PPpar;
+  PPpar.open("./PsdPar/PsdPed");
+  if(!PPpar.good()){
+  std::cout<<"Can not open Psd Par file!"<<std::endl;
+  return false;
+  }
+  for(int dy=0;dy<2;++dy){
+    for(int la=0;la<2;++la){
+      for(int ba=0;ba<41;++ba){
+        for(int si=0;si<2;++si){
+        PPpar>>PsdPedMean[la][ba][si][dy];
+        PPpar>>PsdPedSigma[la][ba][si][dy];
+        }
+      }
+    }
+  }
+  PPpar.close();
+  return true;
+}
+//-------------------------------------------------------------------
+bool DmpAlgBgoHits::GetPsdMips(){
+  ifstream PMpar;
+  PMpar.open("./PsdPar/PsdMips");
+  if(!PMpar.good()){
+  std::cout<<"Can not open Psd Mips file!"<<std::endl;
+  return false;
+  }
+  for(int l=0;l<2;++l){
+    for(int b=0;b<41;++b){
+      for(int s=0;s<2;++s){
+        for(int p=0;p<3;++p){
+        PMpar>>PsdMips[l][b][s][p];
+ 
+        }
+      }
+    }
+  }
+  PMpar.close();
+  return true;
+}
 //-------------------------------------------------------------------
 DmpAlgBgoHits::~DmpAlgBgoHits(){
 }
@@ -120,7 +165,10 @@ bool DmpAlgBgoHits::Initialize(){
   fBgoRaw = dynamic_cast<DmpEvtBgoRaw*>(gDataBuffer->ReadObject("Event/Cutped/Bgo"));
   fBgoHits = new DmpEvtBgoHits();
   gDataBuffer->RegisterObject("Event/Cal/Hits",fBgoHits,"DmpEvtBgoHits");
-        
+  fPsdRaw=new DmpEvtBgoRaw();      
+  gDataBuffer->LinkRootFile("Event/Rdc/Psd",fPsdRaw);
+  fPsdHits = new DmpEvtBgoHits();
+  gDataBuffer->RegisterObject("Event/Cal/PsdHits",fPsdHits,"DmpEvtBgoHits");
   
         bool prepareDyCoePar=GetDyCoePar();
 	if(!prepareDyCoePar){
@@ -138,7 +186,45 @@ bool DmpAlgBgoHits::Initialize(){
 	  std::cout<<"Error:Can not read Att Par!"<<std::endl;
 	  return false;
 	}
-
+        bool preparePsdPedPar=GetPsdPed();
+	if(!preparePsdPedPar){
+	  std::cout<<"Error:Can not read Psd Ped Par!"<<std::endl;
+	  return false;
+        }
+        bool preparePsdMipsPar=GetPsdMips();
+	if(!preparePsdMipsPar){
+	  std::cout<<"Error:Can not read Psd Mips Par!"<<std::endl;
+	  return false;
+        }
+  
+  //Get First Trigger
+  gRootIOSvc->PrepareEvent(0);
+  short firstT = fEvtHeader->GetTrigger();
+  std::cout<<"First Trigger: "<<firstT<<std::endl;
+  //Cut Last Package
+  int Tstarttime=fEvtHeader->GetSecond();
+  int Tlasttime=Tstarttime;
+  int Tnowtime=0;
+  int Ttimegap=0;
+  timecut=Tstarttime;
+  //int nEvents=gCore->GetMaxEventNumber();
+  //if(nEvents>600){
+    for(int ievent=0;ievent<800;ievent++){
+      gRootIOSvc->PrepareEvent(ievent);
+      Tnowtime=fEvtHeader->GetSecond();
+      Ttimegap=Tnowtime -Tlasttime;
+      if(Ttimegap>80){
+        timecut=Tnowtime;
+  //      std::cout<<"Cut last package event!(Event:"<<ievent<<std::endl;
+        break;
+      }  
+      Tlasttime=Tnowtime;
+    }
+ // }
+  
+  //std::string t = DmpTimeConvertor::Second2Date(timecut);
+  //gCore->Set("StartTime",t);
+  //std::cout<<t<<": "<<timecut<<" "<<DmpTimeConvertor::Date2Second(t)<<std::endl;
   return true;
 }
 //-------------------------------------------------------------------
@@ -148,13 +234,12 @@ Position.SetXYZ(0.,0.,0.);
 }
 //-------------------------------------------------------------------
 bool DmpAlgBgoHits::ProcessThisEvent(){
-    long entries= gCore->GetCurrentEventID();
-    if(entries%2000==0){std::cout<<"Event:"<<entries<<std::endl;}
-    //check run mode
-  if(fBgoRaw->GetRunMode()==2)
-    return false;
+
+// int timenow=fEvtHeader->GetSecond();
+// if(timenow<timecut){return false;}
  //Reset event class
  fBgoHits->Reset();
+
  Reset();
  //choose dynodes: 2,5 or 8
   double HitsBuffer[14][22][2];
@@ -238,18 +323,53 @@ bool DmpAlgBgoHits::ProcessThisEvent(){
    //   }
     }
   }
+  ProcessPsdHits();
   return true;
 }
 
 //-------------------------------------------------------------------
+bool DmpAlgBgoHits::ProcessPsdHits(){
+  fPsdHits->Reset();
+  double HitsBuffer[2][41][2];
+  memset(HitsBuffer,0,sizeof(HitsBuffer));
+
+  short nS=fPsdRaw->fGlobalDynodeID.size();
+// std::cout<<"nSignal: "<<nS<<std::endl;
+  short gid=0,l=0,b=0,s=0,d=0;
+  double adc=0.;
+  for(int i=0;i<nS;i++){
+    gid=fPsdRaw->fGlobalDynodeID[i];
+    adc=fPsdRaw->fADC[i];
+    l=DmpPsdBase::GetLayerID(gid);
+    b=DmpPsdBase::GetStripID(gid);
+    s=DmpPsdBase::GetSideID(gid);
+    d=DmpPsdBase::GetDynodeID(gid);
+    //std::cout<<"dynode:"<<d<<" layer:"<<l<<" bar:"<<b<<" side:"<<s<<std::endl;
+    if(b>=41){continue;}
+    if(d==8&&adc>(PsdPedMean[l][b][s][1]+3*PsdPedSigma[l][b][s][1])){
+      adc=adc-PsdPedMean[l][b][s][1];
+//    std::cout<<"PsdMips:"<<PsdMips[l][b][s][0]<<std::endl;
+      HitsBuffer[l][b][s]=adc/PsdMips[l][b][s][0];
+    }
+  }
+  for(short il=0;il<2;++il){ 
+    for(short ib=0;ib<41;++ib) {
+      if(HitsBuffer[il][ib][0]*HitsBuffer[il][ib][1]>0){
+        short gid_bar=DmpBgoBase::ConstructGlobalBarID(il,ib);
+        fPsdHits->fGlobalBarID.push_back(gid_bar);
+        fPsdHits->fES0.push_back(HitsBuffer[il][ib][0]*2);
+        fPsdHits->fES1.push_back(HitsBuffer[il][ib][1]*2);
+        double combinedhits=TMath::Sqrt(HitsBuffer[il][ib][0]*HitsBuffer[il][ib][1]); 
+          fPsdHits->fEnergy.push_back(combinedhits*2);
+
+      }
+    }
+  
+  }
+  return true;
+}
+//-------------------------------------------------------------------
 bool DmpAlgBgoHits::Finalize(){
-    long entries= gCore->GetCurrentEventID();
-  gRootIOSvc->PrepareEvent(0);
-    int starttime=fEvtHeader->GetSecond();
-  gRootIOSvc->PrepareEvent(entries-1);
-    int stoptime=fEvtHeader->GetSecond();
-double rate=(double)entries/((double)(stoptime-starttime));
-std::cout<<"Event Rate: "<<rate<<std::endl;
   return true;
 }
 
