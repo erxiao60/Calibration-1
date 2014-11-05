@@ -69,9 +69,6 @@ bool DmpAlgBgoDacor ::Initialize(){
 
 //-------------------------------------------------------------------
 bool  DmpAlgBgoDacor::ProcessThisEvent(){
-  if(fEvtHeader->EnabledPeriodTrigger()&&fEvtHeader->GeneratedPeriodTrigger()){
-  return false;
-  }
   short nSignal = fBgoRaw->fGlobalDynodeID.size();
 //std::cout<<"XXXXXXXXXXXXXXXX"<<nSignal<<std::endl;
   short gid = 0;

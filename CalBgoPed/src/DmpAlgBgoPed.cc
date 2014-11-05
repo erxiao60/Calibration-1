@@ -97,16 +97,21 @@ bool DmpAlgBgoPed::Initialize(){
 
 //-------------------------------------------------------------------
 bool DmpAlgBgoPed::ProcessThisEvent(){
+   //Cutlast package
+   int timenow= fEvtHeader->GetSecond();
+   if(timenow<timecut){return false;}
     //check run mode
   if(fBgoRaw->GetRunMode()!=0){
     std::cout<<"Wrong Run Mode!"<<fBgoRaw->GetRunMode()<<std::endl;
     return false;
    }
-   //Cutlast package
-   int timenow= fEvtHeader->GetSecond();
-   if(timenow<timecut){return false;}
+  //check trigger mode
+  if(!(fEvtHeader->EnabledPeriodTrigger()&&fEvtHeader->GeneratedPeriodTrigger())){
+  return false;
+  }
 
     long thisevent= gCore->GetCurrentEventID();
+    if(thisevent%1000==0)
     std::cout<<"This event:"<<thisevent<<std::endl;
 
 

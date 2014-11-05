@@ -26,6 +26,7 @@ public:
   //void Set(const std::string &type,const std::string &value);
   // if you need to set some options for your algorithm at run time. Overload Set()
   bool Reset();
+  bool GetDyCoePar();
   bool Initialize();
   bool ProcessThisEvent();    // only for algorithm
   bool Finalize();
@@ -41,6 +42,8 @@ private:
   std::map<short,short>  FitRangeDy5_l;
   std::map<short,short>  FitRangeDy5_h;
 
+  double DyCoePar_58[14][22][2][2];//layer,bar,side, 0:Slope and 1:Intercept
+  double DyCoePar_25[14][22][2][2];//layer,bar,side, 0:Slope and 1:Intercept
   double adc_dy2[14][24][2];
   double adc_dy5[14][24][2];
   double adc_dy8[14][24][2];

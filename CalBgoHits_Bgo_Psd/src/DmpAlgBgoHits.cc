@@ -200,14 +200,15 @@ bool DmpAlgBgoHits::Initialize(){
   //Get First Trigger
   gRootIOSvc->PrepareEvent(0);
   short firstT = fEvtHeader->GetTrigger();
-  std::cout<<"First Trigger: "<<firstT<<std::endl;
+  std::cout<<"  INFO    []:First Trigger: "<<firstT<<std::endl;
   //Cut Last Package
   int Tstarttime=fEvtHeader->GetSecond();
   int Tlasttime=Tstarttime;
   int Tnowtime=0;
   int Ttimegap=0;
   timecut=Tstarttime;
-  //int nEvents=gCore->GetMaxEventNumber();
+ // int nEvents=gCore->GetMaxEventNumber();
+  //std::cout<<"INFO    []:event number:"<<nEvents<<std::endl;
   //if(nEvents>600){
     for(int ievent=0;ievent<800;ievent++){
       gRootIOSvc->PrepareEvent(ievent);
@@ -215,7 +216,7 @@ bool DmpAlgBgoHits::Initialize(){
       Ttimegap=Tnowtime -Tlasttime;
       if(Ttimegap>80){
         timecut=Tnowtime;
-  //      std::cout<<"Cut last package event!(Event:"<<ievent<<std::endl;
+       std::cout<<"  INFO    []:"<<"Cut last package event!(Event:"<<ievent<<")"<<std::endl;
         break;
       }  
       Tlasttime=Tnowtime;
@@ -235,10 +236,11 @@ Position.SetXYZ(0.,0.,0.);
 //-------------------------------------------------------------------
 bool DmpAlgBgoHits::ProcessThisEvent(){
 
-// int timenow=fEvtHeader->GetSecond();
-// if(timenow<timecut){return false;}
+ int timenow=fEvtHeader->GetSecond();
+if(timenow<timecut){return false;}
  //Reset event class
  fBgoHits->Reset();
+ 
 
  Reset();
  //choose dynodes: 2,5 or 8

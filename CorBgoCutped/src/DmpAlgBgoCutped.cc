@@ -70,7 +70,7 @@ bool DmpAlgBgoCutped::Initialize(){
 
 //-------------------------------------------------------------------
 bool DmpAlgBgoCutped::ProcessThisEvent(){
-  if(fEvtHeader->EnabledPeriodTrigger()&&fEvtHeader->GeneratedPeriodTrigger()){
+ if(fEvtHeader->EnabledPeriodTrigger()&&fEvtHeader->GeneratedPeriodTrigger()){
   return false;
   }
   short nSignal = fBgoRaw->fGlobalDynodeID.size();

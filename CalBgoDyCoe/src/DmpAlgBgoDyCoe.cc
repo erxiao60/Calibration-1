@@ -19,7 +19,7 @@
 #include "DmpDataBuffer.h"
 #include "DmpBgoBase.h"
 #include "DmpCore.h"
-
+#include "TTree.h"
 //-------------------------------------------------------------------
 DmpAlgBgoDyCoe::DmpAlgBgoDyCoe()
  :DmpVAlg("Cal/Bgo/DyCoe"),
@@ -46,6 +46,47 @@ bool DmpAlgBgoDyCoe::Reset(){
 DmpAlgBgoDyCoe::~DmpAlgBgoDyCoe(){
 } 
 //-------------------------------------------------------------------
+bool DmpAlgBgoDyCoe::GetDyCoePar(){
+  TFile *fDyPar=new TFile("./DyCoe/DyCoePar.root");
+  if(fDyPar==0){
+    std::cout<<"Can not open DyCoe Par root file!"<<std::endl;
+    return false;
+  }
+    std::cout<<"************************"<<std::endl;
+  TTree *Dytree=(TTree*)fDyPar->Get("Calibration/Bgo");
+  TBranch *b_fBgoDyCoe;
+  DmpEvtBgoDyCoe *fBgoDyPar=new DmpEvtBgoDyCoe();
+
+    std::cout<<"111111111111111111111111"<<std::endl;
+  Dytree->SetBranchAddress("DyCoe",&fBgoDyPar,&b_fBgoDyCoe);
+    std::cout<<"222222222222222222222222"<<std::endl;
+  Dytree->GetEntry(0);
+    std::cout<<"333333333333333333333333"<<std::endl;
+  //prepare parameters
+  short gid=0,l=0,b=0,s=0;
+  short nPmts=(short)fBgoDyPar->GlobalPMTID.size();
+  for(short i=0;i<nPmts; ++i){
+    gid=fBgoDyPar->GlobalPMTID[i];
+    l=DmpBgoBase::GetLayerID(gid);
+    b=DmpBgoBase::GetBarID(gid);
+    s=DmpBgoBase::GetSideID(gid);
+    DyCoePar_58[l][b][s][0]=fBgoDyPar->Slp_Dy8vsDy5[i];
+    DyCoePar_58[l][b][s][1]=fBgoDyPar->Inc_Dy8vsDy5[i];
+    DyCoePar_25[l][b][s][0]=fBgoDyPar->Slp_Dy5vsDy2[i];
+    DyCoePar_25[l][b][s][1]=fBgoDyPar->Inc_Dy5vsDy2[i];
+  
+    std::cout<<"***"<<DyCoePar_58[l][b][s][0]<<std::endl;
+  }
+
+  fDyPar->Close();
+  //delete fBgoDyPar;
+  delete Dytree;
+  delete fDyPar;
+  //usage: QdcCoe[fGidOrder[gid]];//Quadratic Coefficients
+  //       Slope[...],Cst[...] are same.
+  return true;
+}
+//-------------------------------------------------------------------
 bool DmpAlgBgoDyCoe::Initialize(){
   //read input data
   //
@@ -62,7 +103,11 @@ bool DmpAlgBgoDyCoe::Initialize(){
   fBgoDyCoe->UsedFileName = gRootIOSvc->GetInputFileName();
   gRootIOSvc->PrepareEvent(gCore->GetCurrentEventID());
   fBgoDyCoe->StartTime = fEvtHeader->GetSecond();
-
+  // Get Pars
+  //if(!GetDyCoePar()){
+  //std::cout<<"Can not open DyCoe Par file!"<<std::endl;
+  //return false;
+ // }
   //create Hist map
   short layerNo = DmpParameterBgo::kPlaneNo*2;
   short barNo = DmpParameterBgo::kBarNo;
@@ -115,9 +160,21 @@ bool DmpAlgBgoDyCoe::ProcessThisEvent(){
       for(short side=0;side<2;++side){
 	short gid_pmt = DmpBgoBase::ConstructGlobalPMTID(layer,bar,side);
 	if(adc_dy2[layer][bar][side]>0 && adc_dy5[layer][bar][side]>0){
-          fDy5vsDy2Hist[gid_pmt]->Fill(adc_dy2[layer][bar][side],adc_dy5[layer][bar][side]);
+          if(DyCoePar_25[layer][bar][side][0]!=0){
+            double computedDy5=adc_dy2[layer][bar][side]*DyCoePar_25[layer][bar][side][0]+DyCoePar_25[layer][bar][side][1];
+            if(TMath::Abs(computedDy5-adc_dy5[layer][bar][side])<900) 
+              fDy5vsDy2Hist[gid_pmt]->Fill(adc_dy2[layer][bar][side],adc_dy5[layer][bar][side]);
+          }
+          else
+            fDy5vsDy2Hist[gid_pmt]->Fill(adc_dy2[layer][bar][side],adc_dy5[layer][bar][side]);
  	  }
 	if(adc_dy5[layer][bar][side]>0 && adc_dy8[layer][bar][side]>0){
+          if(DyCoePar_58[layer][bar][side][0]!=0){
+            double computedDy8=adc_dy5[layer][bar][side]*DyCoePar_58[layer][bar][side][0]+DyCoePar_58[layer][bar][side][1];
+            if(TMath::Abs(computedDy8-adc_dy8[layer][bar][side])<900) 
+              fDy8vsDy5Hist[gid_pmt]->Fill(adc_dy5[layer][bar][side],adc_dy8[layer][bar][side]);
+          }
+          else
 	  fDy8vsDy5Hist[gid_pmt]->Fill(adc_dy5[layer][bar][side],adc_dy8[layer][bar][side]);
  	}
 	if(adc_dy5[layer][bar][side]> 1500 && adc_dy5[layer][bar][side]<3500 && (FitRangeDy5_l[gid_pmt]<40 || FitRangeDy5_l[gid_pmt]>adc_dy2[layer][bar][side]) && adc_dy2[layer][bar][side]>=40){
